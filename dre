@@ -1,0 +1,57 @@
+import sys
+import pytesseract
+from PIL import Image
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QVBoxLayout,
+    QWidget, QPushButton, QFileDialog, QTextEdit
+)
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+import openai
+
+# OpenAI key
+openai.api_key = "YOUR_API_KEY"
+
+class Browser(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("AI Browser with Screenshot Solver")
+
+        self.browser = QWebEngineView()
+        self.browser.setUrl("https://www.google.com")
+
+        self.output = QTextEdit()
+        self.output.setPlaceholderText("AI result appears here...")
+
+        screenshot_btn = QPushButton("Load Screenshot")
+        screenshot_btn.clicked.connect(self.load_screenshot)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.browser)
+        layout.addWidget(screenshot_btn)
+        layout.addWidget(self.output)
+
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
+
+    def load_screenshot(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open Screenshot", "", "Images (*.png *.jpg *.jpeg)")
+        if file_path:
+            text = pytesseract.image_to_string(Image.open(file_path))
+            result = self.ask_ai(text)
+            self.output.setText(result)
+
+    def ask_ai(self, text):
+        prompt = f"Solve this problem from screenshot text:\n{text}"
+
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return response["choices"][0]["message"]["content"]
+
+app = QApplication(sys.argv)
+window = Browser()
+window.show()
+sys.exit(app.exec_())
